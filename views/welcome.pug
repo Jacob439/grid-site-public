@@ -1,0 +1,13 @@
+extends layout
+
+block content 
+  script(src="/socket.io/socket.io.js")
+  script(src="/javascripts/welcome.js")
+
+  #MainHeader
+      h1 Welcome to "Back to the Drawing Board"!
+      h2 Please ask Jacob for the link to your canvas
+      #centeringButton 
+        button(id = 'newPage', class = 'button') Create your own page!
+      img(src='painting.png', alt='Lol, your epic image failed to load')
+      

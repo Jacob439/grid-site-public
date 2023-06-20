@@ -1,0 +1,19 @@
+extends layout
+
+block content 
+  //- h1= title
+  //- script(src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.1.0/uuidv4.min.js")
+  script(src="/socket.io/socket.io.js")
+  script(src="/javascripts/history.js")
+  
+  #testCover
+  span.hovertext(data-hover='Zoom = Scroll Wheel Pan = Ctrl + Click')
+    #tools
+      h1= title
+      input#myRange.slider(type='range' min='1' max='100')
+      p
+        | Time: 
+        span#demo
+  #grid 
+  
+  

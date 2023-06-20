@@ -1,0 +1,200 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('testing2:server');
+var http = require('http');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || 'XXXX');
+app.set('port', port);
+
+
+
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
+
+/**
+ * Playing around with Socket.IO
+ */
+var totalUserCount = 0;
+const { Server } = require("socket.io");
+const io = new Server(server);
+
+/**
+ * MySQL stuff also
+ */
+const mysql = require('mysql');
+//Below also added
+var con = mysql.createConnection({
+  host: "XXXX",
+  user: "XXXX",
+  password: "XXXX",
+  database: "XXXX"
+});
+
+con.connect(function (err) {
+  if (err) throw err;
+  console.log("Connected!");
+
+});
+
+var maxClientCount = 0;
+io.on('connection', (socket) => {
+  console.log('a user connected');
+  totalUserCount++;
+  io.emit('usercount', totalUserCount);
+  socket.on('disconnect', () => {
+    if (totalUserCount > maxClientCount) {
+      maxClientCount = totalUserCount;
+    }
+    console.log('user disconnected');
+    console.log('maxClientCount: ' + maxClientCount);
+    totalUserCount--;
+    io.emit('usercount', totalUserCount);
+  });
+  socket.on('newTile', function (data) {
+    gridUrl = 'XXXX' + data.gridUrl;
+    let tile = data.tileID;
+    let color = data.color;
+    tile = tile.replace(/[^0-9]/gi, '');
+    color = color.replace(/[^a-z0-9]/gi, '');
+
+    if (tile == "" || parseInt(tile) > 1000001 || tile == null) {
+      console.log("Invalid tile");
+      return;
+    }
+    if (color.length != 6 || color == null) {
+      console.log("Invalid color");
+      return;
+    }
+    if (data.gridUrl == 'undefined') {
+      console.log('undefined value');
+      return;
+    }
+
+    let sql = "INSERT INTO " + gridUrl + " (tile, color) VALUES (" + tile + ", \'" + color + "\')";
+    con.query(sql, function (err, result) {
+      if (err) throw err;
+      io.emit('updateTile' + gridUrl.slice(9), { tileID: tile, color: color });
+    });
+  });
+  const { v4: uuidv4 } = require('uuid');
+  socket.on('newPage', function (userID) {
+    let newAddress = uuidv4();
+    newAddress = newAddress.replace(/[^a-z0-9]/gi, '');
+    let newTable = 'XXXX' + newAddress;
+    console.log("New Table Name: " + newTable);
+    let sql = "CREATE TABLE " + newTable + " (id INT AUTO_INCREMENT PRIMARY KEY, tile INT, color CHAR(6), time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)";
+    con.query(sql, function (err, result) {
+      if (!err) {
+        console.log("Result: " + result);
+        io.to(userID.id).emit('checkedPage', { newAddress: newAddress });
+      } else {
+        console.log("Table already exists");
+        newAddress = "testingHere";
+        io.to(userID.id).emit('checkedPage', { newAddress: newAddress });
+      }
+    });
+  });
+  socket.on('history', function (data) {
+    gridUrl = 'XXXX' + data.url;
+    console.log("gridURL: " + gridUrl);
+    console.log("ClientID: " + data.userID);
+    if (data.gridUrl == 'undefined') {
+      console.log('undefined value');
+      return;
+    }
+    let sql = "SELECT * FROM " + gridUrl;
+    con.query(sql, function (err, result) {
+      //if (err) throw err;
+      if (!err) {
+        io.to(data.userID).emit('fullHistory', { result: result });
+      } else {
+        console.log("something is wrong");
+        console.log(err);
+        io.to(data.userID).emit('fullHistory', { result: 0 });
+      }
+    });
+  });
+});
+
+

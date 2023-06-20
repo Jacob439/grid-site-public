@@ -1,0 +1,23 @@
+extends layout
+
+block content 
+  //- h1= title
+  script(src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.1.0/uuidv4.min.js")
+  script(src="/socket.io/socket.io.js")
+  script(src="/javascripts/writingLogic.js")
+  script(src="/javascripts/grid.js")
+  
+  #testCover
+  span.hovertext(data-hover='Zoom = Scroll Wheel Pan = Ctrl + Click')
+    #tools
+      h1= title
+      #colorPicker
+        label(for='title') Select your color here: 
+        input#head(type='color' name='color' value='#ff0000')
+      button(id = 'history', class = 'button') View History
+    
+
+      
+  #grid 
+  
+  
